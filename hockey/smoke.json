@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "kind": "technical_test",
+  "id": "smoke-001",
+  "voice": "ru_vika",
+  "location": "test_studio",
+  "lines": [
+    {
+      "text": "Привет! Это технический тест хоккейной студии.",
+      "emotion": "neutral"
+    },
+    {
+      "text": "Проверяем голос, субтитры и движение рта.",
+      "emotion": "smile"
+    }
+  ]
+}
