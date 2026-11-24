@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   casting:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,11 @@ jobs:
       - name: Install CPU dependencies
         run: |
           python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
-          python -m pip install numpy omegaconf
+          python -m pip install 'numpy<2' omegaconf
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
           ffmpeg -version
       - name: Generate voice previews
         run: python voice_casting.py
