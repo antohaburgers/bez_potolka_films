@@ -1,0 +1,67 @@
+name: Chatterbox casting
+
+on:
+  workflow_dispatch:
+    inputs:
+      line_1:
+        description: Opening line
+        required: true
+        type: string
+      line_2:
+        description: Surprised line
+        required: true
+        type: string
+      line_3:
+        description: Sad line
+        required: true
+        type: string
+      line_4:
+        description: Closing line
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  casting:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0 torchaudio==2.6.0
+          python -m pip install 'chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git@ab55923c27757c90cfcc407baa57dc25a7d25217'
+      - name: Prepare tokenizer cache
+        run: |
+          model_dir="$RUNNER_TEMP/pkuseg"
+          mkdir -p "$model_dir"
+          curl --fail --silent --show-error --location --retry 3 \
+            https://github.com/explosion/spacy-pkuseg/releases/download/v0.0.26/spacy_ontonotes.zip \
+            --output "$model_dir/spacy_ontonotes.zip"
+          printf '%s  %s\n' b216e7f92de7ae285aeab8feba2faa8ea8216e5995ff6fb3d391cc8356db1bfe "$model_dir/spacy_ontonotes.zip" | sha256sum -c
+          unzip -q "$model_dir/spacy_ontonotes.zip" -d "$model_dir/spacy_ontonotes"
+          printf 'PKUSEG_HOME=%s\n' "$model_dir" >> "$GITHUB_ENV"
+      - name: Generate Russian dialogue
+        env:
+          HF_HUB_DISABLE_XET: "1"
+          LINE_1: ${{ inputs.line_1 }}
+          LINE_2: ${{ inputs.line_2 }}
+          LINE_3: ${{ inputs.line_3 }}
+          LINE_4: ${{ inputs.line_4 }}
+        run: |
+          printf '%s\n' "$LINE_1" "$LINE_2" "$LINE_3" "$LINE_4" > "${RUNNER_TEMP}/dialogue.txt"
+          python chatterbox_casting.py "${RUNNER_TEMP}/dialogue.txt"
+          for wav in output-chatterbox/*.wav; do
+            ffmpeg -v error -i "$wav" -codec:a libmp3lame -b:a 128k "${wav%.wav}.mp3"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chatterbox-casting
+          path: output-chatterbox/*.mp3
+          retention-days: 1
+          if-no-files-found: error
