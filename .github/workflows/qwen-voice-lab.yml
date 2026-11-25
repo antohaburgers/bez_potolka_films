@@ -12,6 +12,7 @@ on:
         options:
           - all
           - smoke
+          - neutral
         default: all
   push:
     paths:
@@ -29,8 +30,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      PHRASE: ${{ inputs.text || 'сегодня в кхл просто чумовой день! Играют сразу 6 команд, а тех кто проиграет - выебут! Просто шок! Я не завидую болельщикам' }}
-      MODE: ${{ inputs.mode || 'all' }}
+      PHRASE: ${{ inputs.text || 'В паралле́льной вселе́нной Ка Хэ Эл сегодня по́лный пизде́ц! Завару́хин пришёл на матч Автомобили́ста и подра́лся со Спро́нгом за последнюю ша́йбу. Кудашо́в в по́лном аху́е, а судья́ ушёл за попко́рном... И, конечно же, Ра́зин снова уво́лен!' }}
+      MODE: ${{ inputs.mode || 'neutral' }}
       ENGINE_SHA: ef339be58a778b062e1c14382347964552eae007
       OPENBLAS_NUM_THREADS: '1'
     steps:
@@ -60,6 +61,7 @@ jobs:
           mkdir -p ../voice-output
           emotions=(neutral sad joy anger fear disgust surprise contempt awe nostalgia disapproval remorse outrage despair)
           if [[ "$MODE" == smoke ]]; then emotions=(neutral joy anger); fi
+          if [[ "$MODE" == neutral ]]; then emotions=(neutral); fi
           printf 'Speaker: ono_anna\nLanguage: Russian\nEngine: %s\nPhrase: %s\nMode: %s\n' "$ENGINE_SHA" "$PHRASE" "$MODE" > ../voice-output/manifest.txt
           : > ../voice-output/concat.txt
           failed=0
