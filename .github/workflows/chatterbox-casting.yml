@@ -1,6 +1,9 @@
 name: Chatterbox casting
 
 on:
+  push:
+    branches: [hockey-tyan-chatterbox-tts]
+    paths: ['chatterbox_casting.py', '.github/workflows/chatterbox-casting.yml']
   workflow_dispatch:
     inputs:
       line_1:
@@ -54,12 +57,17 @@ jobs:
           LINE_3: ${{ inputs.line_3 }}
           LINE_4: ${{ inputs.line_4 }}
         run: |
-          printf '%s\n' "$LINE_1" "$LINE_2" "$LINE_3" "$LINE_4" > "${RUNNER_TEMP}/dialogue.txt"
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            printf '%s\n' "$LINE_1" "$LINE_2" "$LINE_3" "$LINE_4"
+          else
+            printf '%s\n' 'Привет! Начинаем хоккейный обзор.' 'Вот это неожиданный результат!' 'Болельщики расстроены…' 'Увидимся в следующем выпуске!'
+          fi > "${RUNNER_TEMP}/dialogue.txt"
           python chatterbox_casting.py "${RUNNER_TEMP}/dialogue.txt"
           for wav in output-chatterbox/*.wav; do
             ffmpeg -v error -i "$wav" -codec:a libmp3lame -b:a 128k "${wav%.wav}.mp3"
           done
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           name: chatterbox-casting
           path: output-chatterbox/*.mp3
