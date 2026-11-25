@@ -29,8 +29,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      PHRASE: ${{ inputs.text || 'Я этот матч надолго запомню.' }}
-      MODE: ${{ inputs.mode || 'smoke' }}
+      PHRASE: ${{ inputs.text || 'сегодня в кхл просто чумовой день! Играют сразу 6 команд, а тех кто проиграет - выебут! Просто шок! Я не завидую болельщикам' }}
+      MODE: ${{ inputs.mode || 'all' }}
       ENGINE_SHA: ef339be58a778b062e1c14382347964552eae007
       OPENBLAS_NUM_THREADS: '1'
     steps:
@@ -67,7 +67,7 @@ jobs:
           for emotion in "${emotions[@]}"; do
             index=$((index + 1))
             printf -v base '%02d_%s' "$index" "$emotion"
-            args=(-d qwen3-tts-1.7b -s ono_anna -l Russian --int8 --threads 4 --seed 42 --max-duration 20 --text "$PHRASE" -o "../voice-output/$base.wav")
+            args=(-d qwen3-tts-1.7b -s ono_anna -l Russian --int8 --threads 4 --seed 42 --max-duration 35 --text "$PHRASE" -o "../voice-output/$base.wav")
             if [[ "$emotion" != neutral ]]; then args+=(--emotion "$emotion"); fi
             if ./qwen_tts "${args[@]}" > "../voice-output/$base.log" 2>&1 && ffmpeg -hide_banner -loglevel error -y -i "../voice-output/$base.wav" -ar 24000 -ac 1 -codec:a libmp3lame -b:a 96k "../voice-output/$base.mp3"; then
               printf "file '%s.mp3'\n" "$base" >> ../voice-output/concat.txt
