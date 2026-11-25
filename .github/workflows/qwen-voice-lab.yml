@@ -1,0 +1,92 @@
+name: Qwen voice lab - Ono Anna
+on:
+  workflow_dispatch:
+    inputs:
+      text:
+        description: "Russian phrase (same for all selected emotions)"
+        required: true
+        default: "Я этот матч надолго запомню."
+      mode:
+        description: "Smoke test or full 14-emotion casting"
+        type: choice
+        options:
+          - all
+          - smoke
+        default: all
+  push:
+    paths:
+      - '.github/workflows/qwen-voice-lab.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qwen-voice-lab
+  cancel-in-progress: false
+
+jobs:
+  synthesize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      PHRASE: ${{ inputs.text || 'Я этот матч надолго запомню.' }}
+      MODE: ${{ inputs.mode || 'smoke' }}
+      ENGINE_SHA: ef339be58a778b062e1c14382347964552eae007
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - name: Install CPU dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends build-essential libopenblas-dev ffmpeg curl
+          free -h
+          df -h .
+      - name: Fetch and compile pinned Qwen C engine
+        run: |
+          git init engine
+          git -C engine remote add origin https://github.com/gabriele-mastrapasqua/qwen3-tts.git
+          git -C engine fetch --depth=1 origin "$ENGINE_SHA"
+          git -C engine checkout --detach FETCH_HEAD
+          make -C engine blas
+      - name: Download 1.7B CustomVoice weights
+        working-directory: engine
+        run: |
+          bash download_model.sh --model large
+          bash download_assets.sh --no-voices
+      - name: Synthesize audio
+        working-directory: engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../voice-output
+          emotions=(neutral sad joy anger fear disgust surprise contempt awe nostalgia disapproval remorse outrage despair)
+          if [[ "$MODE" == smoke ]]; then emotions=(neutral joy anger); fi
+          printf 'Speaker: ono_anna\nLanguage: Russian\nEngine: %s\nPhrase: %s\nMode: %s\n' "$ENGINE_SHA" "$PHRASE" "$MODE" > ../voice-output/manifest.txt
+          : > ../voice-output/concat.txt
+          failed=0
+          index=0
+          for emotion in "${emotions[@]}"; do
+            index=$((index + 1))
+            printf -v base '%02d_%s' "$index" "$emotion"
+            args=(-d qwen3-tts-1.7b -s ono_anna -l Russian --int8 --threads 4 --seed 42 --max-duration 20 --text "$PHRASE" -o "../voice-output/$base.wav")
+            if [[ "$emotion" != neutral ]]; then args+=(--emotion "$emotion"); fi
+            if ./qwen_tts "${args[@]}" > "../voice-output/$base.log" 2>&1 && ffmpeg -hide_banner -loglevel error -y -i "../voice-output/$base.wav" -ar 24000 -ac 1 -codec:a libmp3lame -b:a 96k "../voice-output/$base.mp3"; then
+              printf "file '%s.mp3'\n" "$base" >> ../voice-output/concat.txt
+              printf '%s: OK\n' "$emotion" >> ../voice-output/manifest.txt
+            else
+              printf '%s: FAILED\n' "$emotion" >> ../voice-output/manifest.txt
+              failed=1
+            fi
+          done
+          if [[ -s ../voice-output/concat.txt ]]; then
+            ffmpeg -hide_banner -loglevel error -y -f concat -safe 0 -i ../voice-output/concat.txt -c copy ../voice-output/casting.mp3
+          fi
+          cat ../voice-output/manifest.txt
+          exit "$failed"
+      - name: Upload audio and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ono-anna-voice-casting
+          path: voice-output/
+          if-no-files-found: warn
+          retention-days: 3
