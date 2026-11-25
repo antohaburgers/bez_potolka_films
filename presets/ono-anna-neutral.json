@@ -1,0 +1,25 @@
+{
+  "name": "Ono Anna — neutral Russian",
+  "engine": "https://github.com/gabriele-mastrapasqua/qwen3-tts",
+  "engine_commit": "ef339be58a778b062e1c14382347964552eae007",
+  "model": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+  "speaker": "ono_anna",
+  "language": "Russian",
+  "mode": "neutral",
+  "quantization": "int8",
+  "threads": 4,
+  "seed": 42,
+  "max_duration_seconds": 35,
+  "emotion": null,
+  "instruct": null,
+  "text_rules": {
+    "explicit_stress_marks": false,
+    "acronym_replacements": {
+      "КХЛ": "Ка Хэ Эл"
+    },
+    "preserve_yo": true,
+    "use_normal_punctuation": true
+  },
+  "approved_test_run": "https://github.com/antohaburgers/bez_potolka_films/actions/runs/45607021050",
+  "note": "Approved neutral voice settings. No explicit accent marks or forced emotion; use punctuation for phrasing. Workflow artifacts expire after 3 days."
+}
